@@ -141,6 +141,11 @@ public class GoogleGenericFunctions {
             }
         }
 
+        public static void clearAndUpdateSheet(String sheetId, String range, List<List<Object>> dataToUpdate) {
+            clearSheetRange(sheetId,range);
+            updateSheet(sheetId, range, dataToUpdate);
+        }
+
         public static List<List<Object>> getData(String sheetId, String sheetName, String cell) {
             return getData(sheetId, sheetName, cell, "");
         }

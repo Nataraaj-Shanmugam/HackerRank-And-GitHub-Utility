@@ -9,16 +9,14 @@ import java.util.*;
 
 public class AuditHomeWork extends RestFunctions{
     static String sheetId = "17oVcButb1QtnjAAkJn9KYHmCV7wjkREv44dcMPxD7fA",
-            token = "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";
+            token = "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",
+            completionStatusSheet = "Completion Status";
+
     private Map<String, Object> getHeaders(){
-//        HashMap<String, Object> header = new HashMap<>();
-//        header.put("Authorization", "Bearer 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");
-//        header.put("X-GitHub-Api-Version", "2022-11-28");
         return Collections.singletonMap("X-GitHub-Api-Version", "2022-11-28");
     }
 
     private String getBaseUrl(String repoOwner, String repoName){
-//        return "https://api.github.com/repos/"+repoOwner+"/"+repoName+"/contents/src/main/java/";
         return "https://api.github.com/repos/"+repoOwner+"/"+repoName+"/contents/src/main/java/mandatoryHomeWork/";
     }
 
@@ -68,11 +66,17 @@ public class AuditHomeWork extends RestFunctions{
         GoogleSheet.updateSheet(sheetId,menteeName+"!A:Z", auditData);
     }
 
-    private void getSeleniumUpdate(String ownerName, String repoName,  HashMap<String, Short> menteeCumulativeData,  List<List<Object>> auditData ){
-        List<Object> contentsCall = getCall(null, StaticData.authKey, TOKEN_TYPE.OAUTH, getBaseUrl(ownerName, repoName)+"selenium").jsonPath().get("html_url");
-        contentsCall.addAll(0, Arrays.asList("Selenium","",contentsCall.size()));
+    private void getNonDSAUpdate(String ownerName, String repoName,  HashMap<String, Short> menteeCumulativeData,  List<List<Object>> auditData, String entity){
+        List<Object> contentsCall = null;
+        try{
+            contentsCall = getCall(null, StaticData.authKey, TOKEN_TYPE.OAUTH, getBaseUrl(ownerName, repoName)+entity.toLowerCase()).jsonPath().get("html_url");
+            menteeCumulativeData.put(entity, (short)contentsCall.size());
+            contentsCall.addAll(0, Arrays.asList(entity,"", contentsCall.size()));
+        }catch (NullPointerException e){
+            contentsCall = Arrays.asList(new Object[]{entity,"", 0});
+            menteeCumulativeData.put(entity, (short) 0);
+        }
         auditData.add(contentsCall);
-        menteeCumulativeData.put("Selenium", (short)contentsCall.size());
     }
 
     private List<Object> getMenteeSheetHeader(short maxNumber){
@@ -88,19 +92,24 @@ public class AuditHomeWork extends RestFunctions{
     private HashMap[] setStatusSheetHeaderAndMenteeRowNumber(){
         HashMap<String, Short> header = new HashMap<>();
         HashMap<String, Short> menteeRowNumber = new HashMap<>();
+        short index = 0;
+        for(Object eachColumnHeader : GoogleSheet.getData(sheetId, completionStatusSheet, "C1", "AZ1").get(0))
+            header.put((String)eachColumnHeader, index++);
+
+        index = 0;
+        for( List<Object> eachRow : GoogleSheet.getData(sheetId, completionStatusSheet, "A3", "A"))
+            menteeRowNumber.put((String)eachRow.get(0), index++);
+
 
         return new HashMap[]{header,menteeRowNumber};
     }
 
     @Test
     private void auditData(){
-        HashMap<String, HashMap<String, Short>> menteeCounter = new HashMap<>();
-        /*
-        todo - get the completion sheet header and column number
-        and map to say row number of an mentee
-         */
-
         HashMap[] statusSheetDetails = setStatusSheetHeaderAndMenteeRowNumber();
+        HashMap<String, Short> statusSheetHeader = statusSheetDetails[0];
+        HashMap<String, Short> menteeRowNumber = statusSheetDetails[1];
+        List<List<Object>> updateSheetData = new ArrayList(Collections.nCopies(menteeRowNumber.size(), 0));
 
         for(Map.Entry<String,List<Object>> eachMentee: getMenteeDetailsData().entrySet()){
             if(eachMentee.getValue().size() > 2){
@@ -109,15 +118,23 @@ public class AuditHomeWork extends RestFunctions{
                         menteeName =(String) eachMentee.getValue().get(1);
                 HashMap<String, Short> menteeCumulativeData = new HashMap<>();
                 List<List<Object>> auditData = new ArrayList<>();
-                getSeleniumUpdate(ownerName,repoName,menteeCumulativeData, auditData);
+                getNonDSAUpdate(ownerName,repoName,menteeCumulativeData, auditData,"Selenium");
+                getNonDSAUpdate(ownerName,repoName,menteeCumulativeData, auditData,"TCE");
+                getNonDSAUpdate(ownerName,repoName,menteeCumulativeData, auditData,"API");
                 getDSAAndUpdate(ownerName,repoName, menteeCumulativeData, auditData);
                 clearAndUpdateSheet(menteeName, auditData);
-                menteeCounter.put(menteeName,menteeCumulativeData);
+
+                //update sheet curation
+                List<Object> menteeData = new ArrayList<>(Collections.nCopies(statusSheetHeader.size(), 0));
+                for(Map.Entry<String, Short> eachEntity: menteeCumulativeData.entrySet())
+                    menteeData.set(statusSheetHeader.get(eachEntity.getKey()), eachEntity.getValue());
+
+                updateSheetData.set(menteeRowNumber.get(menteeName), menteeData);
             }else{
                 System.out.println("Fill details for "+eachMentee.getKey());
+                updateSheetData.set(menteeRowNumber.get((String) eachMentee.getValue().get(1)), new ArrayList<>(Collections.nCopies(statusSheetHeader.size(), 0)));
             }
         }
-        System.out.println(menteeCounter);
-
+        GoogleSheet.clearAndUpdateSheet(sheetId,"'"+completionStatusSheet+"'!C3:"+((char)('A'+statusSheetHeader.size()+1)), updateSheetData);
     }
 }
