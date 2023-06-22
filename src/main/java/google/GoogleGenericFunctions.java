@@ -62,9 +62,9 @@ public class GoogleGenericFunctions {
         try {
             final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
             if(modules.equals("Sheets"))
-                return new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT)).build();
+                return new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT)).setApplicationName("SDET_Audit").build();
             else if(modules.equals("Gmail"))
-                return new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT)).build();
+                return new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT)).setApplicationName("SDET_Audit").build();
         } catch (GeneralSecurityException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -180,7 +180,6 @@ public class GoogleGenericFunctions {
             email.addRecipients(Message.RecipientType.TO, to);
             email.setFrom(from);
             email.setSubject(subject);
-//            email.setText(message);
             email.setContent(message, "text/html; charset=utf-8");
 
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();

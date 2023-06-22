@@ -1,16 +1,21 @@
 package gitHub;
 
 import genericFunctions.RestFunctions;
+import google.GoogleGenericFunctions;
 import google.GoogleGenericFunctions.*;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.annotations.Test;
 
+import javax.mail.MessagingException;
+import java.io.IOException;
 import java.util.*;
 
 public class AuditHomeWork extends RestFunctions{
     static String sheetId = "17oVcButb1QtnjAAkJn9KYHmCV7wjkREv44dcMPxD7fA",
             token = "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",
-            completionStatusSheet = "Completion Status";
+            completionStatusSheet = "Completion Status",
+    //            menteeDetailsSheet = "Testing";
+    menteeDetailsSheet = "Copy of Mentee Details";
 
     private Map<String, Object> getHeaders(){
         return Collections.singletonMap("X-GitHub-Api-Version", "2022-11-28");
@@ -34,7 +39,7 @@ public class AuditHomeWork extends RestFunctions{
 
     private HashMap<String, List<Object>> getMenteeDetailsData(){
         HashMap<String, List<Object>> masterData = new HashMap<>();
-        List<List<Object>> masterSheetData =  GoogleSheet.getData(sheetId, "Mentee Details");
+        List<List<Object>> masterSheetData =  GoogleSheet.getData(sheetId, menteeDetailsSheet);
         masterSheetData.remove(0);
         for(List<Object> eachData : masterSheetData){
             masterData.put((String)eachData.get(1), eachData);
@@ -42,21 +47,34 @@ public class AuditHomeWork extends RestFunctions{
         return masterData;
     }
 
-    private void getDSAAndUpdate(String ownerName, String repoName,  HashMap<String, Short> counter, List<List<Object>> auditData){
+    private void getDSAAndUpdate(String ownerName, String repoName,  HashMap<String, Short> counter, List<List<Object>> auditData, HashMap<String, Short> homeWorkGiven){
         short maxNumber = 0;
-        for (String week : getWeekNumber(ownerName,repoName)) {
-            counter.put(StringUtils.capitalize(week), (short)0);
-            for (String day : getDaysNumber(ownerName,repoName,week)) {
-                ArrayList<Object> temp = new ArrayList<>();
-                temp.add(StringUtils.capitalize(week));
-                temp.add(StringUtils.capitalize(day));
-                ArrayList<String> contentsCall = getCall(null, StaticData.authKey, TOKEN_TYPE.OAUTH, getUrl(ownerName, repoName, week, day)).jsonPath().get("html_url");
-                counter.put(StringUtils.capitalize(week), (short)(counter.get(StringUtils.capitalize(week))+contentsCall.size()));
-                temp.add(contentsCall.size());
-                maxNumber = (short) Math.max(contentsCall.size(), maxNumber);
-                temp.addAll(contentsCall);
-                auditData.add(temp);
+        try{
+            for (String week : getWeekNumber(ownerName,repoName)) {
+                String weekNumber = StringUtils.capitalize(week);
+                counter.put(weekNumber, (short)0);
+                for (String day : getDaysNumber(ownerName,repoName,week)) {
+                    ArrayList<Object> temp = new ArrayList<>();
+                    String dayNumber = StringUtils.capitalize(day);
+                    ArrayList<String> contentsCall = getCall(null, StaticData.authKey, TOKEN_TYPE.OAUTH, getUrl(ownerName, repoName, week, day)).jsonPath().get("html_url");
+                    temp.add(weekNumber);
+                    temp.add(dayNumber);
+                    try {
+                        short givenHW = homeWorkGiven.get(weekNumber + dayNumber);
+                        counter.put(weekNumber, (short) (counter.get(weekNumber) + Math.min(contentsCall.size(), givenHW)));
+                        temp.add(Math.min(contentsCall.size(), givenHW));
+                        maxNumber = (short) Math.max(Math.min(contentsCall.size(), givenHW), maxNumber);
+
+                    }catch (NullPointerException n){
+                        System.out.println("Incorrect week or day "+ week+" "+day);
+                    }
+                    temp.addAll(contentsCall);
+                    auditData.add(temp);
+                }
             }
+        }
+        catch (Exception e){
+            System.out.println("Failed for mentee "+ownerName+" with error "+e.getMessage());
         }
         auditData.add(0, getMenteeSheetHeader(maxNumber));
     }
@@ -104,15 +122,94 @@ public class AuditHomeWork extends RestFunctions{
         return new HashMap[]{header,menteeRowNumber};
     }
 
-    @Test
-    private void auditData(){
+    private void getGivenHomeWork(HashMap<String, Short> homeWorkGiven){
+        for(List<Object> eachRow : GoogleGenericFunctions.GoogleSheet.getData(sheetId, "DSA HW Question", "B2", "D")){
+            homeWorkGiven.put(eachRow.get(0) +((String)eachRow.get(1)), Short.valueOf((String)eachRow.get(2)));
+        }
+    }
+
+    String prefixHTML = "<html>\n" +
+            "<head>\n" +
+            "<style>\n" +
+            "table, th, td {\n" +
+            "border: 1px solid black;\n" +
+            "border-collapse: collapse;\n" +
+            "}\n" +
+            "th {\n" +
+            "text-align: left;\n" +
+            "font-weight: bold;\n" +
+            "background-color: yellow;\n" +
+            "}\n" +
+            "\t\t .veryLow{\n" +
+            "\t\t background-color: red;\n" +
+            "\t\t }\n" +
+            "\t\t .low{\n" +
+            "\t\t background-color: pink;\n" +
+            "\t\t }\n" +
+            "\t\t .on-track{\n" +
+            "\t\t background-color: green;\n" +
+            "\t\t }\n" +
+            "\t\t \n" +
+            "</style>\n" +
+            "</head>\n" +
+            "<body>\n" +
+            "<p> Hi All, <br><br> Please find the current completion status of HomeWork,<br><br></p>\n" +
+            "<table style=\"width:100%\" align = left>",
+            suffix = "</table>\n" +
+                    "<p>&nbsp;</p>\n" +
+                    "<p>Regards,<br> Nataraaj</p>\n" +
+                    "<body>\n" +
+                    "</html>",
+    toEmail = "testleaf-sdet-batch-4-mentors@googlegroups.com",
+    fromEmail ="nataraajshanmugam08@gmail.com";
+
+    private String buildHomeWorkStatusHtml(){
+        List<List<Object>> data = GoogleGenericFunctions.GoogleSheet.getData(sheetId, "Completion Status");
+
+        StringBuilder builder = new StringBuilder(prefixHTML);
+        builder.append("<tr>");
+        for(Object each:data.get(0))
+            builder.append("<th>").append(each).append("</th>");
+        builder.append("</tr>");
+
+        float homeWorkNumbers = 0;
+
+        for( int i = 2; i < data.get(1).size(); i++)
+            homeWorkNumbers+= Short.valueOf((String) data.get(1).get(i));
+
+        for( int i = 2; i < data.size(); i++) {
+            builder.append("<tr>");
+            for( int j = 0; j < data.get(i).size(); j++) {
+                String ifAnyClass = "";
+                if(j == 1){
+                    if((homeWorkNumbers/100*20) <= Short.valueOf((String)data.get(i).get(j)))
+                        ifAnyClass =" class=\"veryLow\"";
+                    else if((homeWorkNumbers/100*10) <= Short.valueOf((String)data.get(i).get(j)))
+                        ifAnyClass =" class=\"low\"";
+                    else
+                        ifAnyClass =" class=\"on-track\"";
+                }
+                try {
+                    builder.append("<td" + ifAnyClass + ">").append(data.get(i).get(j)).append("</td>");
+                }catch (Exception e){
+                    System.out.println(e);
+                }
+            }
+            builder.append("</tr>");
+        }
+        return builder.append(suffix).toString();
+    }
+
+    @Test(priority = 1)
+    private void auditData() throws MessagingException, IOException {
         HashMap[] statusSheetDetails = setStatusSheetHeaderAndMenteeRowNumber();
         HashMap<String, Short> statusSheetHeader = statusSheetDetails[0];
         HashMap<String, Short> menteeRowNumber = statusSheetDetails[1];
         List<List<Object>> updateSheetData = new ArrayList(Collections.nCopies(menteeRowNumber.size(), 0));
-
+        HashMap<String, Short> homeWorkGiven = new HashMap<>();
+        getGivenHomeWork(homeWorkGiven);
         for(Map.Entry<String,List<Object>> eachMentee: getMenteeDetailsData().entrySet()){
-            if(eachMentee.getValue().size() > 2){
+            if(eachMentee.getValue().size() > 2 && !((String)eachMentee.getValue().get(2)).trim().isEmpty()){
                 String ownerName = (String)eachMentee.getValue().get(2),
                         repoName = (String)eachMentee.getValue().get(3),
                         menteeName =(String) eachMentee.getValue().get(1);
@@ -121,7 +218,8 @@ public class AuditHomeWork extends RestFunctions{
                 getNonDSAUpdate(ownerName,repoName,menteeCumulativeData, auditData,"Selenium");
                 getNonDSAUpdate(ownerName,repoName,menteeCumulativeData, auditData,"TCE");
                 getNonDSAUpdate(ownerName,repoName,menteeCumulativeData, auditData,"API");
-                getDSAAndUpdate(ownerName,repoName, menteeCumulativeData, auditData);
+                System.out.println(menteeName);
+                getDSAAndUpdate(ownerName,repoName, menteeCumulativeData, auditData, homeWorkGiven);
                 clearAndUpdateSheet(menteeName, auditData);
 
                 //update sheet curation
@@ -131,10 +229,16 @@ public class AuditHomeWork extends RestFunctions{
 
                 updateSheetData.set(menteeRowNumber.get(menteeName), menteeData);
             }else{
-                System.out.println("Fill details for "+eachMentee.getKey());
+                System.out.println("missing details for "+eachMentee.getKey());
                 updateSheetData.set(menteeRowNumber.get((String) eachMentee.getValue().get(1)), new ArrayList<>(Collections.nCopies(statusSheetHeader.size(), 0)));
             }
         }
         GoogleSheet.clearAndUpdateSheet(sheetId,"'"+completionStatusSheet+"'!C3:"+((char)('A'+statusSheetHeader.size()+1)), updateSheetData);
+        GoogleGenericFunctions.GMail.sendEmail("Test email for git Audit", buildHomeWorkStatusHtml() , fromEmail, toEmail);
+    }
+
+    @Test(priority = 1)
+    public void sendEmail() throws MessagingException, IOException {
+        GoogleGenericFunctions.GMail.sendEmail("Test email for git Audit", buildHomeWorkStatusHtml() , fromEmail, toEmail);
     }
 }
