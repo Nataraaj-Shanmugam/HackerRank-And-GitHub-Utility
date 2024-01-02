@@ -1,6 +1,7 @@
 package gitHub;
 
 import genericFunctions.RestFunctions;
+import gitHubHelper.GitHubHelperUtil;
 import google.GoogleGenericFunctions;
 import google.GoogleGenericFunctions.*;
 import org.apache.commons.lang3.StringUtils;
@@ -59,7 +60,7 @@ public class AuditHomeWork extends RestFunctions{
                     String dayNumber = StringUtils.capitalize(day);
                     ArrayList<String> contentsCall= null;
                     try {
-                        contentsCall = getCall(null, StaticData.authKey, TOKEN_TYPE.OAUTH, getUrl(ownerName, repoName, week, day)).jsonPath().get("html_url");
+                        contentsCall = getCall(null, GitHubHelperUtil.getAuthKey(), TOKEN_TYPE.OAUTH, getUrl(ownerName, repoName, week, day)).jsonPath().get("html_url");
                         temp.add(weekNumber);
                         temp.add(dayNumber);
                         short givenHW = homeWorkGiven.get(weekNumber + dayNumber);
@@ -88,7 +89,7 @@ public class AuditHomeWork extends RestFunctions{
     private void getNonDSAUpdate(String ownerName, String repoName,  HashMap<String, Short> menteeCumulativeData,  List<List<Object>> auditData, String entity){
         List<Object> contentsCall = null;
         try{
-            contentsCall = getCall(null, StaticData.authKey, TOKEN_TYPE.OAUTH, getBaseUrl(ownerName, repoName)+entity.toLowerCase()).jsonPath().get("html_url");
+            contentsCall = getCall(null, GitHubHelperUtil.getAuthKey(), TOKEN_TYPE.OAUTH, getBaseUrl(ownerName, repoName)+entity.toLowerCase()).jsonPath().get("html_url");
             menteeCumulativeData.put(entity, (short)contentsCall.size());
             contentsCall.addAll(0, Arrays.asList(entity,"", contentsCall.size()));
         }catch (NullPointerException e){

@@ -1,7 +1,8 @@
 package hackerRank;
 
 import genericFunctions.RestFunctions;
-import groupData.GroupInformation;
+import gitHubHelper.GroupInformation;
+import hackerRankHelper.HackerRankHelperUtil;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.testng.annotations.Test;
@@ -15,17 +16,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
-public class DownloadTestResultsAsReports extends RestFunctions {
+public class DownloadTestResultsAsReports extends HackerRankHelperUtil {
 
 
-    static String testID = "1596357",
-            key = "Bearer 8b86284be493b95a2daf1951768062a3abb2b6a00f8259287ebfdc6654f28516",
-            path = "C:\\Users\\Others\\Desktop\\Assessment Report\\"+testID;
-
+    RestFunctions restFunctions = new RestFunctions();
     //todo - optimise below code
     private ChromeOptions setCustomCapabilities(){
         HashMap<String, Object> chromePrefs = new HashMap<String, Object>();
-        chromePrefs.put("download.default_directory", path);
+        chromePrefs.put("download.default_directory", HackerRankHelperUtil.getReportPath()+HackerRankHelperUtil.getTestId());
         ChromeOptions options = new ChromeOptions();
         options.setExperimentalOption("prefs", chromePrefs);
         options.addArguments("--headless");
@@ -45,7 +43,7 @@ public class DownloadTestResultsAsReports extends RestFunctions {
             int count = 1;
             do{
                 try {
-                    downloadFile = Paths.get(path + "\\" + downloadUrl.split("filename%3D")[1].split("&")[0]);
+                    downloadFile = Paths.get(HackerRankHelperUtil.getReportPath()+HackerRankHelperUtil.getTestId() + "\\" + downloadUrl.split("filename%3D")[1].split("&")[0]);
                 }catch (Exception e){
                     count++;
                 }
@@ -63,11 +61,11 @@ public class DownloadTestResultsAsReports extends RestFunctions {
     }
 
     private ArrayList<LinkedHashMap> getCandidateIds(){
-        return getJsonResponse(getCall(null, key, TOKEN_TYPE.TOKEN, "https://www.hackerrank.com/x/api/v3/tests/"+testID+"/candidates?limit=40&offset=0&fields=id,full_name")).get("data");
+        return restFunctions.getJsonResponse(restFunctions.getCall(null, HackerRankHelperUtil.getAuthKey(), RestFunctions.TOKEN_TYPE.TOKEN, "https://www.hackerrank.com/x/api/v3/tests/"+HackerRankHelperUtil.getTestId()+"/candidates?limit=40&offset=0&fields=id,full_name")).get("data");
     }
 
     private String getDownloadURL(String candidateId){
-        return getCall(null, key, TOKEN_TYPE.TOKEN, "https://www.hackerrank.com/x/api/v3/tests/"+testID+"/candidates/"+candidateId+"/pdf?format=url").asPrettyString();
+        return restFunctions.getCall(null, HackerRankHelperUtil.getAuthKey(), RestFunctions.TOKEN_TYPE.TOKEN, "https://www.hackerrank.com/x/api/v3/tests/"+HackerRankHelperUtil.getTestId()+"/candidates/"+candidateId+"/pdf?format=url").asPrettyString();
     }
 
     private void moveFileToGroupPath(Path source, String name, String group){

@@ -1,4 +1,4 @@
-package groupData;
+package gitHubHelper;
 
 import genericFunctions.Helpers;
 
