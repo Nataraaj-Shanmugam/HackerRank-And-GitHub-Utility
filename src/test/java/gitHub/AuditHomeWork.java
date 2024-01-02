@@ -4,6 +4,7 @@ import genericFunctions.RestFunctions;
 import gitHubHelper.GitHubHelperUtil;
 import google.GoogleGenericFunctions;
 import google.GoogleGenericFunctions.*;
+import google.GoogleHelperUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.annotations.Test;
 
@@ -11,13 +12,8 @@ import javax.mail.MessagingException;
 import java.io.IOException;
 import java.util.*;
 
-public class AuditHomeWork extends RestFunctions{
-    static String sheetId = "17oVcButb1QtnjAAkJn9KYHmCV7wjkREv44dcMPxD7fA",
-            token = "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",
-            completionStatusSheet = "Completion Status",
-    //            menteeDetailsSheet = "Copy of Mentee Details";
-//    menteeDetailsSheet = "Testing";
-    menteeDetailsSheet = "Mentee Details";
+public class AuditHomeWork extends GoogleHelperUtil {
+    RestFunctions restFunctions = new RestFunctions();
 
     private Map<String, Object> getHeaders(){
         return Collections.singletonMap("X-GitHub-Api-Version", "2022-11-28");
@@ -32,16 +28,16 @@ public class AuditHomeWork extends RestFunctions{
     }
 
     private List<String> getWeekNumber(String repoOwner, String repoName){
-        return getJsonResponse(getCall(getHeaders(),token,TOKEN_TYPE.OAUTH,getBaseUrl(repoOwner,repoName))).getList("findAll {it.type ='dir' && it.name =~ 'week'}.name");
+        return restFunctions.getJsonResponse(restFunctions.getCall(getHeaders(),getAuthKey(),RestFunctions.TOKEN_TYPE.OAUTH,getBaseUrl(repoOwner,repoName))).getList("findAll {it.type ='dir' && it.name =~ 'week'}.name");
     }
 
     private List<String> getDaysNumber(String repoOwner, String repoName,String week){
-        return getJsonResponse(getCall(getHeaders(),token,TOKEN_TYPE.OAUTH,getBaseUrl(repoOwner,repoName)+week)).getList("findAll {it.type ='dir' && it.name =~ 'day'}.name");
+        return restFunctions.getJsonResponse(restFunctions.getCall(getHeaders(),getAuthKey(),RestFunctions.TOKEN_TYPE.OAUTH,getBaseUrl(repoOwner,repoName)+week)).getList("findAll {it.type ='dir' && it.name =~ 'day'}.name");
     }
 
     private HashMap<String, List<Object>> getMenteeDetailsData(){
         HashMap<String, List<Object>> masterData = new HashMap<>();
-        List<List<Object>> masterSheetData =  GoogleSheet.getData(sheetId, menteeDetailsSheet);
+        List<List<Object>> masterSheetData =  GoogleSheet.getData(getSheetId(), getMenteeSheetId());
         masterSheetData.remove(0);
         for(List<Object> eachData : masterSheetData){
             masterData.put((String)eachData.get(1), eachData);
@@ -60,7 +56,7 @@ public class AuditHomeWork extends RestFunctions{
                     String dayNumber = StringUtils.capitalize(day);
                     ArrayList<String> contentsCall= null;
                     try {
-                        contentsCall = getCall(null, GitHubHelperUtil.getAuthKey(), TOKEN_TYPE.OAUTH, getUrl(ownerName, repoName, week, day)).jsonPath().get("html_url");
+                        contentsCall = restFunctions.getCall(null, GitHubHelperUtil.getAuthKey(), RestFunctions.TOKEN_TYPE.OAUTH, getUrl(ownerName, repoName, week, day)).jsonPath().get("html_url");
                         temp.add(weekNumber);
                         temp.add(dayNumber);
                         short givenHW = homeWorkGiven.get(weekNumber + dayNumber);
@@ -82,14 +78,14 @@ public class AuditHomeWork extends RestFunctions{
     }
 
     private void clearAndUpdateSheet(String menteeName, List<List<Object>> auditData ){
-        GoogleSheet.clearSheetRange(sheetId,menteeName+"!A:Z");
-        GoogleSheet.updateSheet(sheetId,menteeName+"!A:Z", auditData);
+        GoogleSheet.clearSheetRange(getSheetId(),menteeName+"!A:Z");
+        GoogleSheet.updateSheet(getSheetId(),menteeName+"!A:Z", auditData);
     }
 
     private void getNonDSAUpdate(String ownerName, String repoName,  HashMap<String, Short> menteeCumulativeData,  List<List<Object>> auditData, String entity){
         List<Object> contentsCall = null;
         try{
-            contentsCall = getCall(null, GitHubHelperUtil.getAuthKey(), TOKEN_TYPE.OAUTH, getBaseUrl(ownerName, repoName)+entity.toLowerCase()).jsonPath().get("html_url");
+            contentsCall = restFunctions.getCall(null, GitHubHelperUtil.getAuthKey(), RestFunctions.TOKEN_TYPE.OAUTH, getBaseUrl(ownerName, repoName)+entity.toLowerCase()).jsonPath().get("html_url");
             menteeCumulativeData.put(entity, (short)contentsCall.size());
             contentsCall.addAll(0, Arrays.asList(entity,"", contentsCall.size()));
         }catch (NullPointerException e){
@@ -113,11 +109,11 @@ public class AuditHomeWork extends RestFunctions{
         HashMap<String, Short> header = new HashMap<>();
         HashMap<String, Short> menteeRowNumber = new HashMap<>();
         short index = 0;
-        for(Object eachColumnHeader : GoogleSheet.getData(sheetId, completionStatusSheet, "C1", "AZ1").get(0))
+        for(Object eachColumnHeader : GoogleSheet.getData(getSheetId(), getCompletionSheetId(), "C1", "AZ1").get(0))
             header.put((String)eachColumnHeader, index++);
 
         index = 0;
-        for( List<Object> eachRow : GoogleSheet.getData(sheetId, completionStatusSheet, "A3", "A"))
+        for( List<Object> eachRow : GoogleSheet.getData(getSheetId(),  getCompletionSheetId(), "A3", "A"))
             menteeRowNumber.put((String)eachRow.get(0), index++);
 
 
@@ -125,7 +121,7 @@ public class AuditHomeWork extends RestFunctions{
     }
 
     private void getGivenHomeWork(HashMap<String, Short> homeWorkGiven){
-        for(List<Object> eachRow : GoogleGenericFunctions.GoogleSheet.getData(sheetId, "DSA HW Question", "B2", "D")){
+        for(List<Object> eachRow : GoogleGenericFunctions.GoogleSheet.getData(getSheetId(), "DSA HW Question", "B2", "D")){
             homeWorkGiven.put(eachRow.get(0) +((String)eachRow.get(1)), Short.valueOf((String)eachRow.get(2)));
         }
     }
@@ -161,12 +157,12 @@ public class AuditHomeWork extends RestFunctions{
                     "<p>&nbsp;</p>\n" +
                     "<p>Regards,<br> Nataraaj</p>\n" +
                     "<body>\n" +
-                    "</html>",
-            toEmail = "testleaf-sdet-batch-4-mentors@googlegroups.com",
-            fromEmail ="nataraajshanmugam08@gmail.com";
+                    "</html>";
+//            toEmail = "testleaf-sdet-batch-4-mentors@googlegroups.com",
+//            fromEmail ="nataraajshanmugam08@gmail.com";
 
     private String buildHomeWorkStatusHtml(){
-        List<List<Object>> data = GoogleGenericFunctions.GoogleSheet.getData(sheetId, "Completion Status");
+        List<List<Object>> data = GoogleGenericFunctions.GoogleSheet.getData(getSheetId(), "Completion Status");
 
         StringBuilder builder = new StringBuilder(prefixHTML);
         builder.append("<tr>");
@@ -248,7 +244,7 @@ public class AuditHomeWork extends RestFunctions{
 
         for(List<Object> eachData : updateSheetData)
             System.out.println(eachData);
-        GoogleSheet.clearAndUpdateSheet(sheetId,"'"+completionStatusSheet+"'!C3:"+((char)('A'+statusSheetHeader.size()+1)), updateSheetData);
-        GoogleGenericFunctions.GMail.sendEmail("Test email for git Audit", buildHomeWorkStatusHtml() , fromEmail, toEmail);
+        GoogleSheet.clearAndUpdateSheet(getSheetId(),"'"+ getCompletionSheetId()+"'!C3:"+((char)('A'+statusSheetHeader.size()+1)), updateSheetData);
+        GoogleGenericFunctions.GMail.sendEmail("Test email for git Audit", buildHomeWorkStatusHtml() , getFromEmailId(), getToEmailId());
     }
 }

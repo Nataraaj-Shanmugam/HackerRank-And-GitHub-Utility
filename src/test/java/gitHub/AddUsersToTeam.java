@@ -9,9 +9,7 @@ import org.testng.annotations.Test;
 
 public class AddUsersToTeam extends RestFunctions {
 
-//    String userDetails = "SahanaBaasha26,AbiramiSam,Anandveera,AnnieDheeben,arun-qa,Ashishdhal\n" +
-//            ",AswinBahulayan,BalajiSaravanan210697,BenjaminD98,darnimca,rdineshbabu22,DivyaVithyakar,geethakalaiselvan2303,gokulsam07,KarthikD1999,mithran14,nagasgit,NazreenFathima,Ajay230818,CPoorani,pragapraga,RajiSDET,Ramya Seshan,sathishkumaravelu,sivagtesting,SrikanthSDET,subha17431,NarpaviSuresh,sureshnatesan,tamilelavenil,vijoy-vijayan";
-    String userDetails = "AbiramiSam";
+ String userDetails = "GitUserName";
 
     @Test
     public void addUsersToTeamAndOrganization(){
