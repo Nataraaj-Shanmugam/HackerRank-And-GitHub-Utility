@@ -2,16 +2,15 @@ package hackerRank;
 
 import genericFunctions.RestFunctions;
 import groupData.GroupInformation;
-import io.restassured.response.ResponseBody;
-import org.json.JSONObject;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
